@@ -6,7 +6,7 @@ module.exports = {
     admin : false,
     roles : [],
     guilds : [],
-    execute(interaction, args, users, database, bot) {
+    execute(interaction, opts, users, database, bot) {
         let names = [];
         let rawNames = [];
         let ind;
@@ -16,11 +16,14 @@ module.exports = {
         let usr_db = true;
         let userList;
         let messageID;
+        const args = {
+            csoport: opts.get('csoport')
+        }
         for (ind = 0; ind < users.USERS.length; ++ind) {
             if(users.USERS[ind].REAL){rawNames.push(users.USERS[ind]);}
         }
-        if (args) {
-            switch (args[0].value) {
+        if (args.csoport) {
+            switch (args.csoport.value) {
                 case "sárgák":
                     for (ind = 0; ind < rawNames.length; ++ind) {
                         if(rawNames[ind].SUBJECTS.GROUPS === 1){names.push(rawNames[ind]);}
@@ -64,30 +67,28 @@ module.exports = {
         } else {
             userList = names.sort();
         }
-        bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-            embeds: [new Discord.MessageEmbed()
-                .setTitle(`Hiányzók${args ? ` ${args[0].value} ` : " "}meet-en`)
+        interaction.reply({embeds: [new Discord.MessageEmbed()
+                .setTitle(`Hiányzók${args.csoport ? ` ${args.csoport.value} ` : " "}meet-en`)
                 .setDescription(`✅ - ha itt van az adott osztálytárs\n❌ - ha nincs itt az adott osztálytárs`)
-                .setColor('RANDOM')]
-        }}}).then(() => {
+                .setColor('RANDOM')
+        ]}).then(() => {
             setTimeout(() => {
-            bot.channels.cache.get(interaction.channel_id).messages.fetch({limit: 1}).then(messages => {
-                messages = messages.first();
-                messages.react("✅");
-                messages.react("❌");
-                messageID = messages.id;
-                msgEdit(nextUsrEmbed());
+                interaction.fetchReply().then((reply) => {
+                    reply.react("✅");
+                    reply.react("❌");
+                    messageID = reply.id;
+                    interaction.editReply({embeds: [nextUsrEmbed()]});
         })}, 3000)});
 
         const listener = (reaction, user) => {
-            if (!reaction.me && reaction.message.id === messageID && (reaction.emoji.name === "✅" || reaction.emoji.name === "❌")) {
+            if (user.id !== bot.user.id && reaction.message.id === messageID && (reaction.emoji.name === "✅" || reaction.emoji.name === "❌")) {
                 switch (reaction.emoji.name) {
                     case "✅":
                         ++usrIndex;
                         if (usrIndex === userList.length) {
                             sendMissing(reaction);
                         } else {
-                            msgEdit(nextUsrEmbed());
+                            interaction.editReply({embeds: [nextUsrEmbed()]});
                         }
                         break;
                     case "❌":
@@ -95,7 +96,7 @@ module.exports = {
                         if (usrIndex === userList.length) {
                             sendMissing(reaction);
                         } else {
-                            msgEdit(nextUsrEmbed());
+                            interaction.editReply({embeds: [nextUsrEmbed()]});
                         }
                         break;
                 }
@@ -108,21 +109,19 @@ module.exports = {
         function sendMissing (reaction) {
             const rgb = HSVtoRGB((1 - (missing.length / userList.length)) / 3, 1, 1)
             const Embed = new Discord.MessageEmbed()
-                .setTitle(missing.length === 0 ? `Úgy tűnik, mindenki benn van${args ? ` ${args[0].value} ` : " "}meet-en` : `Hiányzók${args ? ` ${args[0].value} ` : " "}meet-en:`)
+                .setTitle(missing.length === 0 ? `Úgy tűnik, mindenki benn van${args.csoport ? ` ${args.csoport.value} ` : " "}meet-en` : `Hiányzók${args.csoport ? ` ${args.csoport.value} ` : " "}meet-en:`)
                 .setDescription(missing.join("\n"))
                 .setColor([rgb.r, rgb.g, rgb.b])
-            msgEdit(Embed).then(() => {reaction.message.reactions.cache.forEach(r => {r.remove()})});
+            interaction.editReply({embeds: [Embed]}).then(() => {reaction.message.reactions.cache.forEach(r => {r.remove()})});
             bot.removeListener('messageReactionAdd', listener);
         }
 
         function nextUsrEmbed () {
             return Embed = new Discord.MessageEmbed()
-                .setTitle(`${usr_db ? userList[usrIndex].NICKNAME : userList[usrIndex]} van${args ? ` ${args[0].value} ` : " "}meet-en?`)
+                .setTitle(`${usr_db ? userList[usrIndex].NICKNAME : userList[usrIndex]} van${args.csoport ? ` ${args.csoport.value} ` : " "}meet-en?`)
                 .setDescription(`${usrIndex + 1}/${userList.length}`)
-                .setColor(!usr_db || bot.guilds.cache.get(interaction.guild_id).roles.cache.get(userList[usrIndex].ROLE_ID).color === 0 ? 'RANDOM' : bot.guilds.cache.get(interaction.guild_id).roles.cache.get(userList[usrIndex].ROLE_ID).color);
+                .setColor(!usr_db || bot.guilds.cache.get(interaction.guildId).roles.cache.get(userList[usrIndex].ROLE_ID).color === 0 ? 'RANDOM' : bot.guilds.cache.get(interaction.guildId).roles.cache.get(userList[usrIndex].ROLE_ID).color);
         }
-
-        function msgEdit (e) { return bot.channels.cache.get(interaction.channel_id).messages.cache.get(messageID).edit(e); }
 
         function HSVtoRGB(h, s, v) {
             var r, g, b, i, f, p, q, t;

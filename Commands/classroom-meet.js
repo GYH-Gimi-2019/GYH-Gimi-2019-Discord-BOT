@@ -7,36 +7,45 @@ module.exports = {
     admin : false,
     roles : [],
     guilds : [],
-    execute: function (interaction, args, users, timetable, bot, command) {
+    execute: function (interaction, opts, users, timetable, bot, command) {
         let link;
         let user;
-        const userNum = args[0].options[1] ? ` (user ${args[0].options[1].value})` : "";
-        switch (args[0].name) {
+        let userNum;
+        const row = new Discord.MessageActionRow();
+        const subcommand = opts.getSubcommand();
+        let args = {
+            user: opts.get('user')
+        }
+        switch (subcommand) {
             case "tantárgy":
+                args.tantargy = opts.get('tantárgy');
                 let subject;
                 let db;
-                const subjecr_arr = args[0].options[0].value.split(" ");
+                userNum = args.user ? ` (user ${args.user.value})` : "";
+                const subject_arr = args.tantargy.value.split(" ");
                 switch (command) {
                     case "classroom":
                         db = timetable.CLASSROOM;
-                        user = args[0].options[1] ? `/u/${args[0].options[1].value}/c/` : "/c/";
+                        user = args.user ? `/u/${args.user.value}` : "";
                         break;
                     case "meet":
                         db = timetable.MEET;
-                        user = args[0].options[1] ? `?authuser=${args[0].options[1].value}` : "";
+                        user = args.user ? `?authuser=${args.user.value}` : "";
                         break;
                     default:return;
                 }
-                Object.keys(db).reduce((acc, key) => {
-                    acc[key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")] = db[key];
-                    if (key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === subjecr_arr[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")) {
-                        subject = key;
-                        link = db[key];
+                /*Object.keys(db).reduce((acc, key) => {
+                    console.log(acc);
+                    if (acc === subject_arr[0]) {
+                        subject = acc;
+                        link = db[acc];
                     }
-                    return acc;
-                });
+                    return key;
+                });*/
+                subject = subject_arr[0];
+                link = db[subject];
                 if (typeof link === 'object') {
-                    switch (subjecr_arr[subjecr_arr.length - 1]) {
+                    switch (subject_arr[subject_arr.length - 1]) {
                         case "fiúk":
                             link = link.BOYS;
                             subject += " (fiúk)";
@@ -61,24 +70,30 @@ module.exports = {
                 }
                 switch (command) {
                     case "classroom":
-                        link = link.replace("/c/", user)
+                        link = `https://classroom.google.com${user}/c/${link}`
                         break;
                     case "meet":
-                        link = `${link}${user}`
+                        link = `https://meet.google.com/lookup/${link}${user}`
                         break;
                     default:return;
                 }
-                bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                    content: `**${subject} ${command.charAt(0).toUpperCase() + command.slice(1)} linkje${userNum}:** ${link}`
-                }}});
+                row.addComponents(
+                    new Discord.MessageButton()
+                        .setLabel("Vezess Oda!")
+                        .setStyle("LINK")
+                        .setURL(link)
+                );
+                interaction.reply({content: `**${subject} ${command.charAt(0).toUpperCase() + command.slice(1)} linkje${userNum}**`, components: [row]});
                 break;
             default:
                 switch (command) {
                     case "classroom":
-                        switch (args[0].name) {
+                        switch (subcommand) {
                             case "teendő":
-                                user = args[0].options[1] ? `/u/${args[0].options[1].value}/` : "/";
-                                switch (args[0].options[0].value) {
+                                args.tipus = opts.get('típus');
+                                userNum = args.user ? ` (user ${args.user.value})` : "";
+                                user = args.user ? `/u/${args.user.value}/` : "/";
+                                switch (args.tipus.value) {
                                     case "Kiosztva":
                                         link = `https://classroom.google.com${user}a/not-turned-in/all`;
                                         break;
@@ -89,19 +104,28 @@ module.exports = {
                                         link = `https://classroom.google.com${user}a/turned-in/all`;
                                         break;
                                 }
-                                bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                                        content: `**Teendők ${args[0].options[0].value} linkje${userNum}:** ${link}`
-                                    }}});
+                                row.addComponents(
+                                    new Discord.MessageButton()
+                                        .setLabel("Vezess Oda!")
+                                        .setStyle("LINK")
+                                        .setURL(link)
+                                );
+                                interaction.reply({content: `**Teendők ${args.tipus.value} linkje${userNum}**`, components: [row]});
                                 break;
                         }
                         break;
                     case "meet":
-                        switch (args[0].name) {
+                        switch (subcommand) {
                             case "új":
-                                user = args[0].options[0] ? `?authuser=${args[0].options[0].value}` : "";
-                                bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                                    content: `**Link az új meeting-hez${userNum}:** https://meet.google.com/new${user}`
-                                }}});
+                                userNum = args.user ? ` (user ${args.user.value})` : "";
+                                user = args.user ? `?authuser=${args.user.value}` : "";
+                                row.addComponents(
+                                    new Discord.MessageButton()
+                                        .setLabel("Vezess Oda!")
+                                        .setStyle("LINK")
+                                        .setURL(`https://meet.google.com/new${user}`)
+                                );
+                                interaction.reply({content: `**Link az új meeting-hez${userNum}**`, components: [row]});
                                 break;
                         }
                         break;

@@ -14,12 +14,17 @@ module.exports = {
         }
         const randomElement = class_members[Math.floor(Math.random() * class_members.length)];
         const Embed = new Discord.MessageEmbed()
-        .setTitle('A random osztálytárs nem más, mint...')
-        .setDescription(randomElement.NICKNAME)
-        .setColor(bot.guilds.cache.get(interaction.guild_id).roles.cache.get(randomElement.ROLE_ID).color ? bot.guilds.cache.get(interaction.guild_id).roles.cache.get(randomElement.ROLE_ID).color : 'RANDOM');
-        bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-            embeds: [Embed]
-        }}});
+            .setTitle('A random osztálytárs nem más, mint...')
+            .setDescription(randomElement.NICKNAME)
+            .setColor(bot.guilds.cache.get(interaction.guildId).roles.cache.get(randomElement.ROLE_ID).color ? bot.guilds.cache.get(interaction.guildId).roles.cache.get(randomElement.ROLE_ID).color : 'RANDOM');
+        const row = new Discord.MessageActionRow()
+            .addComponents([
+                new Discord.MessageButton()
+                    .setLabel("Új generálása")
+                    .setStyle(1)
+                    .setCustomId("new_random")
+            ])
+        interaction.reply({embeds: [Embed], components: [row]});
 
     }
 }

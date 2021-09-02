@@ -7,7 +7,7 @@ module.exports = {
     admin : false,
     roles : [],
     guilds : [],
-    execute: function (interaction, args, users, timetable, bot, type) {
+    execute: function (interaction, opts, users, timetable, bot, type) {
         const now = new Date();
         let index = null;
         const week_eng_it = timetable.WEEK.ENG_IT;
@@ -20,7 +20,12 @@ module.exports = {
         temp.setMinutes(59);
         const from = new Date();
         const to = new Date();
+        let breakDuration;
         if (type !== "jon" && type !== "most") return;
+
+        const args = {
+            user: opts.get('user')
+        }
 
         function getWeekNumber(d) {
             d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -191,6 +196,13 @@ module.exports = {
                             temp.setMinutes(timetable.TIMETABLE[now.getDay() - 1][i].TIME.FROM.MINUTE);
                             index = i;
                         }
+                        if (i + 1 < timetable.TIMETABLE[now.getDay() - 1].length) {
+                            to.setHours(timetable.TIMETABLE[now.getDay() - 1][i + 1].TIME.FROM.HOUR);
+                            to.setMinutes(timetable.TIMETABLE[now.getDay() - 1][i + 1].TIME.FROM.MINUTE);
+                            if (time <= now && now < to) {
+                                breakDuration = timetable.TIMETABLE[now.getDay() - 1][i].TIME.TO.MINUTE - timetable.TIMETABLE[now.getDay() - 1][i + 1].TIME.FROM.MINUTE;
+                            }
+                        }
                     }
                     break;
                 case "most":
@@ -208,37 +220,95 @@ module.exports = {
 
             if (index != null) {
                 const Embed = new Discord.MessageEmbed()
-                    .setTitle(`**${type === "jon" ? `A következő óra ma` : `A most zajló óra`}${args && args[0] ? ` (user ${args[0].value})` : ""}:**`)
+                    .setTitle(`**${type === "jon" ? `A következő óra ma` : type === "most" ? `A most zajló óra` : ""}${args.user ? ` (user ${args.user.value})` : ""}:**`)
                     .setDescription(`**${nextLesson(timetable.TIMETABLE[now.getDay() - 1][index].LESSON, timetable.TIMETABLE[now.getDay()-1][index].TYPE)}**`)
                     .addField('Idő:', `${timetable.TIMETABLE[now.getDay() - 1][index].TIME.FROM.HOUR}:${timetable.TIMETABLE[now.getDay() - 1][index].TIME.FROM.MINUTE < 10 ? 0 : ""}${timetable.TIMETABLE[now.getDay() - 1][index].TIME.FROM.MINUTE} - ${timetable.TIMETABLE[now.getDay() - 1][index].TIME.TO.HOUR}:${timetable.TIMETABLE[now.getDay() - 1][index].TIME.TO.MINUTE < 10 ? 0 : ""}${timetable.TIMETABLE[now.getDay() - 1][index].TIME.TO.MINUTE}`)
+                    .addField('Óra hossza:', `${(timetable.TIMETABLE[now.getDay() - 1][index].TIME.TO.MINUTE + (timetable.TIMETABLE[now.getDay() - 1][index].TIME.TO.HOUR * 60)) - (timetable.TIMETABLE[now.getDay() - 1][index].TIME.FROM.MINUTE + (timetable.TIMETABLE[now.getDay() - 1][index].TIME.FROM.HOUR * 60))} perc`)
                     .setColor('RANDOM')
                     .setFooter("Ha több óra is van párhuhamosan, akkor az aláhúzott lesz a tiéd.\nEzért nem is biztos, hogy ami másnak ki lett írva, az neked is jó!");
+            
+                //if (args.user) {
+                    if (classroom) classroom = `https://classroom.google.com${args.user ? `/u/${args.user.value}` : ""}/c/${classroom}`;
+                    if (meet) meet = `https://meet.google.com/lookup/${meet}${args.user ? `?authuser=${args.user.value}` : ""}`;
+                //}
+
+                let comparisonDate = new Date();
+                comparisonDate.setHours(timetable.TIMETABLE[now.getDay() - 1][index].TIME.FROM.HOUR);
+                comparisonDate.setMinutes(timetable.TIMETABLE[now.getDay() - 1][index].TIME.FROM.MINUTE)
+                comparisonDate.setSeconds(0);
+
+                let timeDiff = Math.abs(new Date() - comparisonDate);
+                let timeDiffStr = "";
+                if (timeDiff >= 3600000) timeDiffStr += `${Math.floor(timeDiff / 3600000)} óra `;
+                if (timeDiff >= 60000) timeDiffStr += `${Math.floor((timeDiff / 60000)) % 60} perc `;
+                if (timeDiff >= 1000) timeDiffStr += `${Math.floor((timeDiff / 1000)) % 60} másodperc`;
+
+                switch (type) {
+                    case "jon":
+                        Embed.addField("Ennyi idő múlva:", timeDiffStr);
+
+                        if (index !== 0) {
+                            timeDiffStr = "";
+                            breakDuration = Math.abs(breakDuration);
+                            if (breakDuration >= 60) timeDiffStr += `${Math.floor(breakDuration / 60)} óra `;
+                            if (breakDuration >= 0) timeDiffStr += `${Math.floor((breakDuration)) % 60} perc `;
+                            Embed.addField("Szünet előtte:", timeDiffStr);
+                        }
+                        break;
+                    case "most":
+                        Embed.addField("Ennyi ideje:", timeDiffStr);
+
+                        comparisonDate = new Date();
+                        comparisonDate.setHours(timetable.TIMETABLE[now.getDay() - 1][index].TIME.TO.HOUR);
+                        comparisonDate.setMinutes(timetable.TIMETABLE[now.getDay() - 1][index].TIME.TO.MINUTE)
+                        comparisonDate.setSeconds(0);
+
+                        timeDiff = Math.abs(new Date() - comparisonDate);
+                        timeDiffStr = "";
+                        if (timeDiff >= 3600000) timeDiffStr += `${Math.floor(timeDiff / 3600000)} óra `;
+                        if (timeDiff >= 60000) timeDiffStr += `${Math.floor((timeDiff / 60000)) % 60} perc `;
+                        if (timeDiff >= 1000) timeDiffStr += `${Math.floor((timeDiff / 1000)) % 60} másodperc`;
+
+                        Embed.addField("Hátravan:", timeDiffStr);
+                        break;
+                
+                    default:
+                        break;
+                }
+                let toSend = {
+                    embeds: [Embed]
+                };
+
                 if (timetable.TIMETABLE[now.getDay() - 1][index].DESCRIPTION !== "") {
                     Embed.addField('Megjegyzés:', `${timetable.TIMETABLE[now.getDay() - 1][index].DESCRIPTION}`);
                 }
-                if (args && args[0]) {
-                    if (classroom) classroom = classroom.replace("/c/", `/u/${args[0].value}/c/`);
-                    if (meet) meet = `${meet}?authuser=${args[0].value}`;
+                if (meet || classroom) {
+                    const row = new Discord.MessageActionRow();
+                    if (classroom) {
+                        row.addComponents(
+                            new Discord.MessageButton()
+                                .setLabel("Classroom")
+                                .setStyle("LINK")
+                                .setURL(classroom)
+                        )
+                    }
+                    if (meet) {
+                        row.addComponents(
+                            new Discord.MessageButton()
+                            .setLabel("Meet")
+                            .setStyle("LINK")
+                            .setURL(meet)
+                        )
+                    }
+                    toSend.components = [row];
                 }
-                if (meet) {
-                    Embed.addField('Meet link:', `${meet}`);
-                }
-                if (classroom) {
-                    Embed.addField('Classroom link', `${classroom}`);
-                }
-                bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                    embeds: [Embed]
-                }}});
+                interaction.reply(toSend);
             } else {
-                bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                    content: type === "jon" ? "Ma nincs több óra!" : "Most nincs óra!"
-                }}});
+                interaction.reply(type === "jon" ? "Ma nincs több óra!" : type === "most" ? "Most nincs óra!" : "");
             }
 
         } else {
-            bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                content: "Hétvégén nincs óra!"
-            }}});
+            interaction.reply("Hétvégén nincs óra!");
         }
     }
 }

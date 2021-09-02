@@ -4,116 +4,128 @@ module.exports = {
     admin : false,
     roles : [],
     guilds : [],
-    async execute(interaction, users, bot, args){
+    async execute(interaction, users, bot, opts){
         const Discord = require('discord.js');
-        let ind = null;
-        let dm;
-        switch(args[0].name) {
-            case "lista":
-                let allBD = [];
-                for (ind = 0; ind < users.USERS.length; ++ind) {
-                    if(users.USERS[ind].REAL){allBD.push({"NAME" : users.USERS[ind].NICKNAME, "DATE" : new Date(users.USERS[ind].BIRTHDAY.YEAR, users.USERS[ind].BIRTHDAY.MONTH-1, users.USERS[ind].BIRTHDAY.DAY, 0, 0, 0, 0)});}
-                }
-                for (ind = 0; ind < allBD.length; ++ind) {
-                    if (allBD[ind] === undefined) allBD.splice(ind, 1);
-                }
-                const sortedBD = allBD.sort(function (a, b) {switch(args[0].options[0].value) {case "abc": let nameA = a.NAME.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); let nameB = b.NAME.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); if (nameA < nameB) { return -1; } if (nameA > nameB) { return 1; } return 0; case "datum": return a.DATE - b.DATE;}})
-                let Embed = new Discord.MessageEmbed();
-                let BDstring = "";
-                for (ind = 0; ind < sortedBD.length; ++ind) {
-                    BDstring += `**${sortedBD[ind].NAME}**: ${sortedBD[ind].DATE.getFullYear()}. ${monthToString(sortedBD[ind].DATE.getMonth()+1)} ${sortedBD[ind].DATE.getDate()}.\n`;
-                }
-                Embed
-                .setTitle("Születésnapok")
-                .addField(`${sortBy()} szerint rendezve`, BDstring)
-                .setColor('RANDOM');
-                bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                    embeds: [Embed]
-                }}});
-                break;
-            default:
-                switch (args[0].name) {
-                    case "név":
-                        for (let index = 0; index < users.USERS.length; index++) {
-                            if (users.USERS[index].NICKNAME.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === args[0].options[0].options[0].value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || users.USERS[index].NICKNAME.toLowerCase() === args[0].options[0].options[0].value.toLowerCase()) {
-                                ind = index;
-                                break;
-                            }
-                        }
-                        break;
-                    case "tag":
-                        for (let index = 0; index < users.USERS.length; index++) {
-                            if (users.USERS[index].USER_ID === args[0].options[0].value) {
-                                ind = index;
-                                break;
-                            }
-                        }
-                        break;
-                }
-                if (ind != null) {
-                    if (users.USERS[ind].USER_ID) {
-                        dm = `<@!${users.USERS[ind].USER_ID}> születésnapja: ${users.USERS[ind].BIRTHDAY.YEAR}. ${monthToString(users.USERS[ind].BIRTHDAY.MONTH)} ${users.USERS[ind].BIRTHDAY.DAY}.`;
-                    } else {
-                        dm = `${users.USERS[ind].NICKNAME} születésnapja: ${users.USERS[ind].BIRTHDAY.YEAR}. ${monthToString(users.USERS[ind].BIRTHDAY.MONTH)} ${users.USERS[ind].BIRTHDAY.DAY}.`;
+        let user;
+        let date;
+
+        let args;
+        const subcommandGroup = opts.getSubcommandGroup(false);
+        const subcommand = opts.getSubcommand();
+
+        if (subcommandGroup) {
+            switch (subcommandGroup) {
+                case "név":
+                    args = {
+                        nev: opts.getString('név')
                     }
-                    bot.users.cache.get(interaction.member.user.id).send(dm);
-                    bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                        content: `${bot.users.cache.get(interaction.member.user.id)}, nézd meg, mit küldtem DM-ben!`
-                    }}}).then(() => {
-                        setTimeout(() => {
-                            bot.channels.cache.get(interaction.channel_id).messages.fetch({limit: 1}).then(messages => {
-                                bot.channels.cache.get(interaction.channel_id).bulkDelete(messages);
-                            })
-                        }, 3000);
+					user = users.USERS.find(u => u.NICKNAME === args.nev);
+                    break;
+            }
+        } else {
+            switch (subcommand) {
+                case "tag":
+                    args = {
+                        tag: opts.getUser('tag')
+                    }
+					console.log(args.tag)
+                    user = users.USERS.find(u => u.USER_ID === args.tag.id);
+                    break;
+                case "lista":
+                    args = {
+                        rendezes: opts.getString('rendezés')
+                    }
+                    let allBD = [];
+					users.USERS.forEach(u => {
+						if (u.REAL) {
+							allBD.push({
+                                "NAME": u.NICKNAME,
+                                "DATE": new Date(u.BIRTHDAY.YEAR, u.BIRTHDAY.MONTH - 1, u.BIRTHDAY.DAY, 0, 0, 0, 0)
+                            });
+						}
+					});
+                    for (let i = 0; i < allBD.length; ++i) {
+                        if (allBD[i] === undefined) allBD.splice(i, 1);
+                    }
+                    const sortedBD = allBD.sort(
+                        /**
+                         * @param {string} a.NAME
+                         * @param {Date} a.DATE
+                         * @param {string} b.NAME
+                         * @param {Date} b.DATE
+                         * @return {number}
+                         */
+                        function (a, b) {
+							switch (args.rendezes) {
+								case "abc":
+									return a.NAME.localeCompare(b.NAME, 'hu');
+								case "datum":
+									switch (a.DATE - b.DATE) {
+										case 0:
+											return a.NAME.localeCompare(b.NAME, 'hu');
+										default:
+											return a.DATE - b.DATE;
+
+									}
+								case "nap":
+									switch (new Date(a.DATE).setFullYear(0) - new Date(b.DATE).setFullYear(0)) {
+										case 0:
+											switch (a.DATE - b.DATE) {
+												case 0:
+													return a.NAME.localeCompare(b.NAME, 'hu');
+												default:
+													return a.DATE - b.DATE;
+											}
+										default:
+											return new Date(a.DATE).setFullYear(0) - new Date(b.DATE).setFullYear(0);
+									}
+							}
+						}
+					);
+                    let BDstring = "";
+                    sortedBD.forEach((e, i) => {
+                        BDstring += `\`${i + 1 < 10 ? " " : ""}${i + 1}.\` **${e.NAME}**: <t:${e.DATE / 1000}:D>/* — *kövi: ${getAge(e.DATE) + 1}. <t:${new Date(e.DATE).setFullYear(0) > new Date().setFullYear(0) ? new Date(e.DATE).setFullYear(new Date().getFullYear()) / 1000 : new Date(e.DATE).setFullYear(new Date().getFullYear() + 1) / 1000}:R>**/\n`;
                     });
-                } else {
-                    bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                        content: "Érvénytelen paraméter!"
-                    }}}).then(() => {
-                        setTimeout(() => { bot.channels.cache.get(interaction.channel_id).messages.fetch({ limit: 1 }).then(messages => {
-                            bot.channels.cache.get(interaction.channel_id).bulkDelete(messages);
-                        })}, 3000);
-                    });
-                }
-                break;
+                    const Embed = new Discord.MessageEmbed()
+                        .setTitle("Születésnapok")
+						.setAuthor(`${sortBy()} szerint rendezve`)
+                        .setDescription(BDstring)
+                        .setColor('RANDOM');
+                    interaction.reply({embeds: [Embed]});
+                    return;
+            }
+        }
+        if (user) {
+            interaction.reply({content: `${user.NICKNAME} születésnapja: <t:${new Date(user.BIRTHDAY.YEAR, user.BIRTHDAY.MONTH - 1, user.BIRTHDAY.DAY, 0, 0, 0, 0)/1000}:D> — *kövi: ${getAge(new Date(user.BIRTHDAY.YEAR, user.BIRTHDAY.MONTH - 1, user.BIRTHDAY.DAY, 0, 0, 0, 0)) + 1}. <t:${new Date(user.BIRTHDAY.YEAR, user.BIRTHDAY.MONTH - 1, user.BIRTHDAY.DAY, 0, 0, 0, 0).setFullYear(0) > new Date().setFullYear(0) ? new Date(user.BIRTHDAY.YEAR, user.BIRTHDAY.MONTH - 1, user.BIRTHDAY.DAY, 0, 0, 0, 0).setFullYear(new Date().getFullYear()) / 1000 : new Date(user.BIRTHDAY.YEAR, user.BIRTHDAY.MONTH - 1, user.BIRTHDAY.DAY, 0, 0, 0, 0).setFullYear(new Date().getFullYear() + 1) / 1000}:R>*`, ephemeral: true});
+        } else {
+            interaction.reply({content: "Érvénytelen paraméter!", ephemeral: true});
         }
         function sortBy() {
-            switch (args[0].options[0].value) {
+            switch (args.rendezes) {
                 case "abc":
                     return "Név";
                 case "datum":
+                    return "Születési dátum";
+                case "nap":
                     return "Születésnap";
             }
         }
 
-        function monthToString(month) {
-            switch (month) {
-                case 1:
-                    return "Január";
-                case 2:
-                    return "Február";
-                case 3:
-                    return "Március";
-                case 4:
-                    return "Április";
-                case 5:
-                    return "Május";
-                case 6:
-                    return "Június";
-                case 7:
-                    return "Július";
-                case 8:
-                    return "Augusztus";
-                case 9:
-                    return "Szeptember";
-                case 10:
-                    return "Október";
-                case 11:
-                    return "November";
-                case 12:
-                    return "December";
-                default:
-                    return month;
+        /**
+         *
+         * @param {Date} birthday
+         * @return {number}
+         */
+        function getAge(birthday) {
+            const now = new Date();
+            if (now.getMonth() + 1 >= birthday.getMonth() + 1) {
+                if (now.getDate() >= birthday.getDate()) {
+                    return now.getFullYear() - birthday.getFullYear()
+                } else {
+                    return now.getFullYear() - birthday.getFullYear() - 1;
+                }
+            } else {
+                return now.getFullYear() - birthday.getFullYear() - 1;
             }
         }
     }

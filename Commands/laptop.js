@@ -6,11 +6,13 @@ module.exports = {
     admin : false,
     roles : [],
     guilds : [],
-    execute: function (interaction, args, users, timetable, bot) {
-        if (args[0].value > 100 || args[0].value < 1) {
-            bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                content: "Érvénytelen paraméter!"
-            }}});
+    execute: function (interaction, opts, users, timetable, bot) {
+        const args = {
+            alkalom: opts.get('alkalom')
+        }
+
+        if (args.alkalom.value > 100 || args.alkalom.value < 1) {
+            interaction.reply({content: "Érvénytelen paraméter!", ephemeral: true});
             return;
         }
 
@@ -30,7 +32,7 @@ module.exports = {
         let day;
         let dates = "";
         
-        while (args[0].value > count) {
+        while (args.alkalom.value > count) {
             day = whichDay();
             if (day) {
                 dates += `${date.getFullYear()}. ${date.getMonth()+1 < 10 ? "0" : ""}${date.getMonth()+1}. ${date.getDate() < 10 ? "0" : ""}${date.getDate()}. ${date.getDay() === 2 ? "Kedd" : "Hétfő"}\n`
@@ -39,12 +41,10 @@ module.exports = {
         }
 
         const Embed = new Discord.MessageEmbed()
-        .setTitle(`A következő ${args[0].value} alkalom, mikor be kell hoznod a laptopod (${groups === 1 ? "sárgák" : "pirosak/lilák"})`)
+        .setTitle(`A következő ${args.alkalom.value} alkalom, mikor be kell hoznod a laptopod (${groups === 1 ? "sárgák" : "pirosak/lilák"})`)
         .setDescription(dates)
         .setColor('RANDOM');
-        bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-            embeds: [Embed]
-        }}});
+        interaction.reply({embeds: [Embed]});
 
         function getWeekNumber(d) {
             d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -55,7 +55,7 @@ module.exports = {
 
         function whichDay() {
             if (getWeekNumber(date) % 2 === week) {
-                if (date.getDay() === 1) {
+                if (date.getDay() === 2) {
                     if (groups === 1) {
                         count++
                         return date;
@@ -67,7 +67,7 @@ module.exports = {
                     }
                 }
             } else {
-                if (date.getDay() === 2) {
+                if (date.getDay() === 1) {
                     if (groups === 1) {
                         count++
                         return date;

@@ -6,18 +6,21 @@ module.exports = {
     admin : false,
     roles : [],
     guilds : [],
-    execute(interaction, args, users, bot) {
+    execute(interaction, opts, users) {
         let names = [];
         let ind;
         for (ind = 0; ind < users.USERS.length; ++ind) {
             if(users.USERS[ind].REAL){names.push({"NICKNAME" : users.USERS[ind].NICKNAME, "FIRSTNAME" : users.USERS[ind].FIRSTNAME, "LASTNAME" : users.USERS[ind].LASTNAME});}
+        }
+        const args = {
+            rendezes: opts.get('rendezés')
         }
         const sortedNames = names.sort(function (a, b) {
             let nameA;
             let nameB;
             let nameC;
             let nameD;
-            switch (args[0].value) {
+            switch (args.rendezes.value) {
                 case "becenév":
                     nameA = a.NICKNAME.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                     nameB = b.NICKNAME.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -41,11 +44,9 @@ module.exports = {
                 namesString += `**${ind+1}**: ${sortedNames[ind].FIRSTNAME} ${sortedNames[ind].LASTNAME} *"${sortedNames[ind].NICKNAME}"*\n`;
             }
             const Embed = new Discord.MessageEmbed()
-                .setTitle(`Névsor ${args[0].value} szerint rendezve`)
+                .setTitle(`Névsor ${args.rendezes.value} szerint rendezve`)
                 .setDescription(namesString)
                 .setColor('RANDOM');
-        bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-            embeds: [Embed]
-        }}});
+        interaction.reply({embeds: [Embed]});
     }
 }

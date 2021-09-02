@@ -6,7 +6,7 @@ module.exports = {
     admin : false,
     roles : [],
     guilds : [],
-    execute: function (interaction, args, users, timetable, bot) {
+    execute: function (interaction, opts, users, timetable, bot) {
         const now = new Date();
         let time;
         let temp = new Date();
@@ -15,22 +15,28 @@ module.exports = {
         let week_add = 0;
         const week_eng_it = timetable.WEEK.ENG_IT;
         const week_art = timetable.WEEK.ART;
+        const subcommand = opts.getSubcommand();
+        let args;
         const datePrint = () => { return `${time.getFullYear()}. ${time.getMonth() + 1 < 10 ? "0" : ""}${time.getMonth() + 1}. ${time.getDate() < 10 ? "0" : ""}${time.getDate()}.`}
         temp.setHours(23);
         temp.setMinutes(59);
         const Embed = new Discord.MessageEmbed()
             .setFooter("Ha több óra is van párhuhamosan, akkor az aláhúzott lesz a tiéd.\nEzért nem is biztos, hogy ami másnak ki lett írva, az neked is jó!")
             .setColor('RANDOM');
-        switch (args[0].name) {
+        switch (subcommand) {
             case "ma":
                 time = now;
                 Embed.setTitle(`**Órák ma (${datePrint()}, ${day(time.getDay())}):**`);
                 break;
             case "hét":
-                week_day = weekDay(args[0].options[0].value);
+                args = {
+                    nap: opts.get('nap'),
+                    het: opts.get('hét')
+                }
+                week_day = weekDay(args.nap.value);
                 time = now;
-                if (args[0].options[1]) {
-                    week_add = args[0].options[1].value;
+                if (args.het) {
+                    week_add = args.het.value;
                     time.setDate(time.getDate() + week_day + week_add * 7);
                     Embed.setTitle(`**Órák ${week_add === 0 ? "ezen a héten" : (Math.abs(week_add) === 1 ? (week_add === 1 ? "jövő hét" : "múlt hét") : (`${Math.abs(week_add)} ${week_add < 0 ? "héttel ezelőtt" : "hét múlva"}`))} ${onDay(time.getDay())} (${datePrint()}):**`);
                 } else {
@@ -39,13 +45,17 @@ module.exports = {
                 }
                 break;
             case "múlva":
-                if (args[0].options[1] && args[0].options[1].value !== 0 && !(args[0].options[0].value + args[0].options[1].value * 7 >= -2 && args[0].options[0].value + args[0].options[1].value * 7 <= 2)) {
-                    week_add = args[0].options[1].value + Math.trunc(args[0].options[0].value / 7);
+                args = {
+                    nap: opts.get('nap'),
+                    het: opts.get('hét')
+                }
+                if (args.het && args.het.value !== 0 && !(args.value + args.het.value * 7 >= -2 && args.nap.value + args.het.value * 7 <= 2)) {
+                    week_add = args.het.value + Math.trunc(args.nap.value / 7);
                     time = now;
-                    time.setDate(time.getDate() + args[0].options[0].value + args[0].options[1].value * 7);
-                    Embed.setTitle(`**Órák ${Math.abs(args[0].options[1].value)} ${args[0].options[1].value < 0 ? "héttel ezelőtt" : "héttel ezután"} ${args[0].options[0].value < 0 ? "-" : "+"} ${Math.abs(args[0].options[0].value)} nap / ${week_add === 0 ? "ezen a héten" : (Math.abs(week_add) === 1 ? (week_add === 1 ? "jövő hét" : "múlt hét") : (`${Math.abs(week_add)} ${week_add < 0 ? "héttel ezelőtt" : "hét múlva"}`))} ${onDay(time.getDay())} (${datePrint()}):**`);
+                    time.setDate(time.getDate() + args.nap.value + args.het.value * 7);
+                    Embed.setTitle(`**Órák ${Math.abs(args.het.value)} ${args.het.value < 0 ? "héttel ezelőtt" : "héttel ezután"} ${args.nap.value < 0 ? "-" : "+"} ${Math.abs(args.nap.value)} nap / ${week_add === 0 ? "ezen a héten" : (Math.abs(week_add) === 1 ? (week_add === 1 ? "jövő hét" : "múlt hét") : (`${Math.abs(week_add)} ${week_add < 0 ? "héttel ezelőtt" : "hét múlva"}`))} ${onDay(time.getDay())} (${datePrint()}):**`);
                 } else {
-                    switch (args[0].options[1] ? args[0].options[0].value + args[0].options[1].value * 7 : args[0].options[0].value) {
+                    switch (args.het ? args.nap.value + args.het.value * 7 : args.nap.value) {
                         case -2:
                             time = now;
                             time.setDate(time.getDate() - 2);
@@ -71,21 +81,26 @@ module.exports = {
                             Embed.setTitle(`**Órák holnapután (${datePrint()}, ${day(time.getDay())}):**`);
                             break;
                         default:
-                            if (Math.abs(args[0].options[0].value) >= 7) {
+                            if (Math.abs(args.nap.value) >= 7) {
                                 time = now;
-                                time.setDate(time.getDate() + args[0].options[0].value);
-                                Embed.setTitle(`**Órák ${Math.abs(args[0].options[0].value)} ${args[0].options[0].value < 0 ? "nappal ezelőtt" : "nap múlva"} / ${Math.trunc(args[0].options[0].value / 7) === 0 ? "ezen a héten" : (Math.abs(Math.trunc(args[0].options[0].value / 7)) === 1 ? (Math.trunc(args[0].options[0].value / 7) === 1 ? "jövő hét" : "múlt hét") : (`${Math.abs(Math.trunc(args[0].options[0].value / 7))} ${Math.trunc(args[0].options[0].value / 7) < 0 ? "héttel ezelőtt" : "hét múlva"}`))} ${onDay(time.getDay())} (${datePrint()}):**`);
+                                time.setDate(time.getDate() + args.nap.value);
+                                Embed.setTitle(`**Órák ${Math.abs(args.nap.value)} ${args.nap.value < 0 ? "nappal ezelőtt" : "nap múlva"} / ${Math.trunc(args.nap.value / 7) === 0 ? "ezen a héten" : (Math.abs(Math.trunc(args.nap.value / 7)) === 1 ? (Math.trunc(args.nap.value / 7) === 1 ? "jövő hét" : "múlt hét") : (`${Math.abs(Math.trunc(args.nap.value / 7))} ${Math.trunc(args.nap.value / 7) < 0 ? "héttel ezelőtt" : "hét múlva"}`))} ${onDay(time.getDay())} (${datePrint()}):**`);
                             } else {
                                 time = now;
-                                time.setDate(time.getDate() + args[0].options[0].value);
-                                Embed.setTitle(`**Órák ${Math.abs(args[0].options[0].value)} ${args[0].options[0].value < 0 ? "nappal ezelőtt" : "nap múlva"} (${datePrint()}, ${day(time.getDay())}):**`);
+                                time.setDate(time.getDate() + args.nap.value);
+                                Embed.setTitle(`**Órák ${Math.abs(args.nap.value)} ${args.nap.value < 0 ? "nappal ezelőtt" : "nap múlva"} (${datePrint()}, ${day(time.getDay())}):**`);
                             }
                             break;
                     }
                 }
                 break;
             case "dátum":
-                time = new Date(args[0].options[0].value, args[0].options[1].value - 1, args[0].options[2].value);
+                args = {
+                    ev: opts.get('év'),
+                    honap: opts.get('hónap'),
+                    nap: opts.get('nap')
+                }
+                time = new Date(args.ev.value, args.honap.value - 1, args.nap.value);
                 const diff = (n) => { return Number(new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() + n)) };
                 switch (Number(time)) {
                     case diff(-2):
@@ -104,26 +119,22 @@ module.exports = {
                         Embed.setTitle(`**Órák holnapután (${datePrint()}, ${day(time.getDay())}):**`);
                         break;
                     default:
-                        Embed.setTitle(`**Órák ekkor: ${args[0].options[0].value}. ${args[0].options[1].value < 10 ? "0" : ""}${args[0].options[1].value}. ${args[0].options[2].value < 10 ? "0" : ""}${args[0].options[2].value}., ${day(time.getDay())}:**`);
+                        Embed.setTitle(`**Órák ekkor: ${args.ev.value}. ${args.honap.value < 10 ? "0" : ""}${args.honap.value}. ${args.nap.value < 10 ? "0" : ""}${args.nap.value}., ${day(time.getDay())}:**`);
                         break;
 
                 }
                 break;
         }
         if (time.getDay() === 0 || time.getDay() === 6) {
-            bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                content: "Hétvégén nincs óra!"
-            }}});
+            interaction.reply("Hétvégén nincs óra!");
             return;
         }
         lesson(time.getDay() - 1)
-        bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-            embeds: [Embed]
-        }}});
+        interaction.reply({embeds: [Embed]});
 
         function lesson(d) {
             for (index = 0; index < timetable.TIMETABLE.length; index++) {
-                Embed.addField(nextLesson(timetable.TIMETABLE[d][index].LESSON, timetable.TIMETABLE[d][index].TYPE), `Idő: ${timetable.TIMETABLE[d][index].TIME.FROM.HOUR}:${timetable.TIMETABLE[d][index].TIME.FROM.MINUTE < 10 ? 0 : ""}${timetable.TIMETABLE[d][index].TIME.FROM.MINUTE} - ${timetable.TIMETABLE[d][index].TIME.TO.HOUR}:${timetable.TIMETABLE[d][index].TIME.TO.MINUTE < 10 ? 0 : ""}${timetable.TIMETABLE[d][index].TIME.TO.MINUTE}${timetable.TIMETABLE[d][index].DESCRIPTION !== "" ? `\nMegjegyzés: ${timetable.TIMETABLE[d][index].DESCRIPTION}` : ""}`)
+                Embed.addField(nextLesson(timetable.TIMETABLE[d][index].LESSON, timetable.TIMETABLE[d][index].TYPE), `Idő: _${timetable.TIMETABLE[d][index].TIME.FROM.HOUR}:${timetable.TIMETABLE[d][index].TIME.FROM.MINUTE < 10 ? 0 : ""}${timetable.TIMETABLE[d][index].TIME.FROM.MINUTE} - ${timetable.TIMETABLE[d][index].TIME.TO.HOUR}:${timetable.TIMETABLE[d][index].TIME.TO.MINUTE < 10 ? 0 : ""}${timetable.TIMETABLE[d][index].TIME.TO.MINUTE}_${timetable.TIMETABLE[d][index].DESCRIPTION !== "" ? `\nMegjegyzés: _${timetable.TIMETABLE[d][index].DESCRIPTION}_` : ""}`);
             }
         }
 

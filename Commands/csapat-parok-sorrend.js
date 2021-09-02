@@ -6,7 +6,7 @@ module.exports = {
     admin : false,
     roles : [],
     guilds : [],
-    execute(interaction, args, database, users, bot, command) {
+    execute(interaction, opts, database, users, bot, command) {
         let namesLength;
         let names = [];
         let number;
@@ -14,23 +14,29 @@ module.exports = {
         let typePrint;
         let group;
         let nl;
+
+        const args = {
+            darab: opts.get('darab'),
+            csoport: opts.get('csoport')
+        }
+
         switch (command) {
             case "csapat":
                 type = " csapat";
                 typePrint = "csapatok"
-                group = args[1];
+                if (args.csoport) group = args.csoport.value;
                 nl = 2;
                 break;
             case "parok":
                 type = " pár";
                 typePrint = "párok"
-                if (args) group = args[0];
+                if (args.csoport) group = args.csoport.value;
                 nl = 1;
                 break;
             case "sorrend":
                 type = "";
                 typePrint = "sorrend"
-                if (args) group = args[0];
+                if (args.csoport) group = args.csoport.value;
                 nl = 1;
                 break;
         }
@@ -41,7 +47,7 @@ module.exports = {
             if (u.REAL) class_members.push(u);
         });
         if (group) {
-            switch (group.value) {
+            switch (group) {
                 case "sárgák":
                     class_members.forEach(c => {
                         if(c.SUBJECTS.GROUPS === 1){names.push(c.NICKNAME);}
@@ -82,7 +88,7 @@ module.exports = {
         }
         switch (command) {
             case "csapat":
-                number = args[0].value;
+                number = args.darab.value;
                 break;
             case "parok":
                 number = Math.floor(names.length / 2);
@@ -127,16 +133,12 @@ module.exports = {
                 teams[index6] = teams[index6].join(", ").replace(":** , ", ":** ");
             }
             const Embed = new Discord.MessageEmbed()
-            .setTitle(`A ${typePrint}${group ? ` ehhez: ${group.value}` : ""}:`)
+            .setTitle(`A ${typePrint}${group ? ` ehhez: ${group}` : ""}:`)
             .setDescription(`${teams.join("\n".repeat(nl))}${left ? `${"\\n".repeat(nl)}**Kimaradt:** ${left}` : ""}`)
             .setColor("RANDOM");
-            bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                embeds: [Embed]
-            }}});
+            interaction.reply({embeds: [Embed]});
         } else {
-            bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                content: "Érvénytelen paraméter!"
-            }}});
+            interaction.reply({content: "Érvénytelen paraméter!", ephemeral: true});
         }
     }
 }

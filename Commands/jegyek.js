@@ -7,14 +7,18 @@ module.exports = {
     admin : false,
     roles : [],
     guilds : [],
-    execute: function (interaction, args, bot) {
+    execute: function (interaction) {
         const Embed = new Discord.MessageEmbed()
-            .setTitle("Ide kattintva tudod megnézni az értékeléseid")
+            .setTitle("Itt tudod megnézni az értékeléseid")
             .setDescription("**Felhasználónév:** *a telves neved*\n**Alapértelmezett jelszó:** *OM azonosítód*\nNe felejtsd el átálllítani __Tanuló__ra!")
-            .setURL("http://online-ertekeles.hu/gyhgimi")
             .setColor('RANDOM');
-        bot.api.interactions(interaction.id, interaction.token).callback.post({data: {type: 4, data: {
-            embeds: [Embed]
-        }}});
+        const row = new Discord.MessageActionRow()
+            .addComponents(
+                new Discord.MessageButton()
+                    .setLabel("Vezess Oda!")
+                    .setStyle("LINK")
+                    .setURL("http://online-ertekeles.hu/gyhgimi")
+        );
+        interaction.reply({embeds: [Embed], components: [row]})
     }
 }

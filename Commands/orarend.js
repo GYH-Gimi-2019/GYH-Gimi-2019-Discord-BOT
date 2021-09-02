@@ -11,12 +11,8 @@ module.exports = {
         const splitPath = path.split("/");
         const Embed = new Discord.MessageEmbed()
         .setTitle(`${setup.CURRENT_SCHOOLYEAR} ${setup.CURRENT_CLASS} órarend`)
-        .attachFiles(path)
-        .setImage(`attachment://${splitPath[splitPath.length-1]}`)
+        .setImage(`attachment://${splitPath[splitPath.length - 1]}`)
         .setColor("RANDOM");
-        bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-            embeds: [Embed],
-            attachments: path
-        }}});
+        interaction.reply({embeds: [Embed], files: [path]});
     }
 }

@@ -7,7 +7,7 @@ module.exports = {
     execute(message, args, users, setup) {
         const members = message.guild.members.cache;
         message.guild.members.cache.forEach(u => {
-            if (u.id !== message.guild.ownerID && u.roles.cache.has(setup.REACTION_ROLES.Verified.ROLE_ID)) members.get(u.id).setNickname(nicknameSearch(u));
+            if (u.id !== message.guild.ownerID && u.roles.cache.has(setup.ROLES.Verified.ROLE_ID)) members.get(u.id).setNickname(nicknameSearch(u));
         });
 
         function nicknameSearch(user) {

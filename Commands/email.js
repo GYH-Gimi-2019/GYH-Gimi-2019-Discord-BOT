@@ -1,20 +1,29 @@
+const Discord = require('discord.js');
+
 module.exports = {
     name: 'email',
     description: 'writes out the email address of the requested teacher or classmate',
     admin : false,
     roles : [],
     guilds : [],
-    execute: function (interaction, args, users, bot) {
+    execute: function (interaction, opts, users, database, bot) {
         let ind;
         let email;
         let name;
-        switch (args[0].name) {
+        const row = new Discord.MessageActionRow();
+        const subcommandGroup = opts.getSubcommandGroup(false);
+        const subcommand = opts.getSubcommand();
+        let args;
+        switch (subcommandGroup) {
             case "név":
-                switch (args[0].options[0].name) {
+                args = {
+                    nev: opts.get('név')
+                }
+                switch (subcommand) {
                     case "fiú":
                     case "lány":
                         for (let index = 0; index < users.USERS.length; index++) {
-                            if (users.USERS[index].NICKNAME.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === args[0].options[0].options[0].value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || users.USERS[index].NICKNAME.toLowerCase() === args[0].options[0].options[0].value.toLowerCase()) {
+                            if (users.USERS[index].NICKNAME === args.nev.value) {
                                 ind = index;
                                 email = users.USERS[index].EMAIL;
                                 name = users.USERS[index].NICKNAME;
@@ -23,30 +32,49 @@ module.exports = {
                         }
                         break;
                     case "tanár":
-                        for (let index = 0; index < users.TEACHERS.length; index++) {
-                            if (users.TEACHERS[index].NAME.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === args[0].options[0].options[0].value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || users.TEACHERS[index].NAME.toLowerCase() === args[0].options[0].options[0].value.toLowerCase()) {
+                        for (let index = 0; index < database.TEACHERS.length; index++) {
+                            if (database.TEACHERS[index].NAME === args.nev.value) {
                                 ind = index;
-                                email = users.TEACHERS[index].EMAIL;
-                                name = users.TEACHERS[index].NAME;
+                                email = database.TEACHERS[index].EMAIL;
+                                name = database.TEACHERS[index].NAME;
                                 break;
                             }
                         }
                         break;
                 }
                 break;
-            case "tag":
-                for (let index = 0; index < users.USERS.length; index++) {
-                    if (users.USERS[index].USER_ID === args[0].options[0].value) {
-                        ind = index;
-                        email = users.USERS[index].EMAIL;
-                        name = users.USERS[index].NICKNAME;
+            default:
+                switch (subcommand) {
+                    case "tag":
+                        args = {
+                            tag: opts.get('tag')
+                        }
+                        for (let index = 0; index < users.USERS.length; index++) {
+                            if (users.USERS[index].USER_ID === args.tag.value) {
+                                ind = index;
+                                email = users.USERS[index].EMAIL;
+                                name = users.USERS[index].NICKNAME;
+                                break;
+                            }
+                        }
+                        if (ind === undefined) {
+                            interaction.reply({content: "Érvénytelen paraméter!", ephemeral: true});
+                            return;
+                        }
                         break;
-                    }
                 }
                 break;
         }
-        bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-            content: `**${name} email címe:** ${email}@gyermekekhaza.hu`
-        }}});
+        row.addComponents([
+            new Discord.MessageButton()
+                .setLabel("Email küldése")
+                .setStyle("LINK")
+                .setURL(`https://bencetuzson.github.io/mailtoredirect/index?email=${email}@gyermekekhaza.hu`),
+            new Discord.MessageButton()
+                .setLabel("Email küldése Gmail-en")
+                .setStyle("LINK")
+                .setURL(`https://mail.google.com/mail?view=cm&tf=0"?&to=${email}@gyermekekhaza.hu`)
+        ]);
+        interaction.reply({content: `**${name} email címe:** ${email}@gyermekekhaza.hu`, components: [row]});
     }
 }

@@ -1,4 +1,5 @@
 const Discord = require('discord.js');
+const Util = require("../node_modules/discord.js/src/util/Util");
 
 module.exports = {
     name: 'szin',
@@ -6,89 +7,98 @@ module.exports = {
     admin : false,
     roles : [],
     guilds : [],
-    execute(interaction, args, users, database, bot){
+    execute(interaction, opts, users, database, bot){
         const colours = database.COLOURS;
+        const subcommand = opts.getSubcommand();
+        let args
+
+        if (interaction.isCommand()) {
+            args = {
+                teszt: opts.get('teszt')
+            }
+        } else if (interaction) {
+            args = {
+                teszt: false
+            }
+        }
+
+        const row = new Discord.MessageActionRow()
+            .addComponents([
+                new Discord.MessageButton()
+                    .setLabel("Beállítás")
+                    .setStyle(1)
+                    .setCustomId("set_colour")
+            ])
+
         for (let index = 0; index < users.USERS.length; index++) {
             if (users.USERS[index].USER_ID === interaction.member.user.id) {
-                switch (args[0].name) {
+                switch (subcommand) {
                     case "név":
-                        const custom_colour = isCustomColour(args[0].options[0].value);
+                        args.nev = opts.get('név');
+                        const custom_colour = isCustomColour(args.nev.value);
                         if (custom_colour) {
-                            if (args[0].options[1].value) {
+                            if (args.teszt.value) {
                                 let Embed = new Discord.MessageEmbed()
                                     .setTitle("Szín teszt")
-                                    .setDescription(args[0].options[0].value)
+                                    .setDescription(args.nev.value)
                                     .setColor(custom_colour);
-                                bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                                    embeds: [Embed]
-                                }}});
+                                interaction.reply({embeds: [Embed], components: [row]});
                             } else {
                                 setColor(custom_colour);
-                                bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                                    content: `A színed átállítva erre: ${args[0].options[0].value}`
-                                }}});
+                                interaction.reply(`A színed átállítva erre: ${args.nev.value}`);
                             }
+                        } else if (require("../node_modules/discord.js/src/util/Constants").Colors[args.nev.value.toUpperCase()] || args.nev.value.toUpperCase() === "RANDOM" || args.nev.value.toUpperCase() === "DEFAULT") {
+                            setColor(args.nev.value.toUpperCase());
+                            interaction.reply(`A színed átállítva erre: ${args.nev.value}`);
                         } else {
-                            bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                                content: "Érvénytelen szín!"
-                            }}});
+                            interaction.reply({content: "Érvénytelen szín!", ephemeral: true});
                         }
                         break;
                     case "hex":
-                        let colour = args[0].options[0].value.replace("#", "");
-                        if (colour.length === 6 && new RegExp("^[0-9a-eA-E]+$").test(colour)) {
-                            colour = parseInt(colour, 16);
-                            if (0 <= colour && colour <= 256^3 - 1) {
-                                if (args[0].options[1].value) {
-                                    let Embed = new Discord.MessageEmbed()
-                                        .setTitle("Szín teszt")
-                                        .setDescription(args[0].options[0].value)
-                                        .setColor(colour);
-                                    bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                                        embeds: [Embed]
-                                    }}});
-                                } else {
-                                    setColor(colour);
-                                    bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                                        content: `A színed átállítva erre: ${args[0].options[0].value}`
-                                    }}});
-                                }
-                                return;
+                        args.hex = opts.get('hex');
+                        if (new RegExp("^#?([A-Fa-f0-9]{6})$").test(args.hex.value)) {
+                            if (args.teszt.value) {
+                                let Embed = new Discord.MessageEmbed()
+                                    .setTitle("Szín teszt")
+                                    .setDescription(args.hex.value)
+                                    .setColor(args.hex.value);
+                                interaction.reply({embeds: [Embed], components: [row]});
+                            } else {
+                                setColor(args.hex.value);
+                               interaction.reply(`A színed átállítva erre: ${args.hex.value}`);
                             }
+                        } else {
+                            interaction.reply({content: "Érvénytelen szín!", ephemeral: true});
                         }
-                        bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                            content: "Érvénytelen szín!"
-                        }}});
                         break;
                     case "rgb":
-                        for (let i = 0; i < 3; i++) {
-                            let colour = args[0].options[i].value;
-                            if (!(0 <= colour && colour <= 255)) {
-                                bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                                    content: "Érvénytelen szín!"
-                                }}});
+                        args.r = opts.get('r');
+                        args.g = opts.get('g');
+                        args.b = opts.get('b');
+                        for (const [key, value] of Object.entries(args)) {
+                            let colour = value.value;
+                            if (["r", "g", "b"].some(str => key === str) && !(0 <= colour && colour <= 255)) {
+                                interaction.reply({content: "Érvénytelen szín!", ephemeral: true});
                                 return;
                             }
+
                         }
-                        if (args[0].options[3].value) {
+                        if (args.teszt.value) {
                             let Embed = new Discord.MessageEmbed()
                                 .setTitle("Szín teszt")
-                                .setDescription(`${args[0].options[0].value}, ${args[0].options[1].value}, ${args[0].options[2].value}`)
-                                .setColor(rgbToHex(args[0].options[0].value, args[0].options[1].value, args[0].options[2].value));
-                            bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                                embeds: [Embed]
-                            }}});
+                                .setDescription(`${args.r.value}, ${args.g.value}, ${args.b.value}`)
+                                .setColor(rgbToHex(args.r.value, args.g.value, args.b.value));
+                            interaction.reply({embeds: [Embed], components: [row]});
+
                         } else {
-                            setColor(rgbToHex(args[0].options[0].value, args[0].options[1].value, args[0].options[2].value));
-                            bot.api.interactions(interaction.id, interaction.token).callback.post({data: { type: 4, data: {
-                                content: `A színed átállítva erre: ${args[0].options[0].value}, ${args[0].options[1].value}, ${args[0].options[2].value}`
-                            }}});
+                            setColor(rgbToHex(args.r.value, args.g.value, args.b.value));
+                            interaction.reply(`A színed átállítva erre: ${args.r.value}, ${args.g.value}, ${args.b.value}`);
                         }
                         break;
                 }
 
                 function setColor(color) {
-                    bot.guilds.cache.get(interaction.guild_id).roles.cache.find(r => r.id === users.USERS[index].ROLE_ID).edit({color: color});
+                    bot.guilds.cache.get(interaction.guildId).roles.cache.find(r => r.id === users.USERS[index].ROLE_ID).edit({color: color});
                 }
 
                 function componentToHex(c) {

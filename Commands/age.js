@@ -8,7 +8,7 @@ module.exports = {
         let ind = null;
         const now = new Date();
         for (let index = 0; index < users.USERS.length; index++) {
-            if (users.USERS[index].NICKNAME.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === args[1].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || users.USERS[index].NICKNAME.toLowerCase() === args[1].toLowerCase()) {
+            if (normalise(users.USERS[index].NICKNAME.toLowerCase()) === normalise(args[1].toLowerCase()) || users.USERS[index].NICKNAME.toLowerCase() === args[1].toLowerCase()) {
                 ind = index;
                 break;
             } else if (users.USERS[index].USER_ID === args[1].replace("<", "").replace("@", "").replace("!", "").replace(">", "")) {
@@ -29,6 +29,10 @@ module.exports = {
             } else {
                 return now.getFullYear() - users.USERS[ind].BIRTHDAY.YEAR - 1;
             }
+        }
+
+        function normalise (str) {
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         }
     }
 }

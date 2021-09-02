@@ -3,3 +3,4 @@ config/
 .gitignore
 .idea/
 .vscode/
+.env
